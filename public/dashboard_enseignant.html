@@ -18,7 +18,7 @@
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showView('students',this)">👥 Étudiants</button>
     <button class="nav-tab" onclick="showView('mur',this)">📋 Mur</button>
-    <button class="nav-tab" onclick="showView('msgs',this)">💬 Messages</button>
+    <button class="nav-tab" onclick="location.href='dashboard_messages.html'">📨 Messagerie</button>
     <button class="nav-tab" onclick="location.href='valve.html'">📣 Valve</button>
   </div>
   <div class="sidebar-search">
@@ -291,6 +291,31 @@
   </div>
 </div>
 
-<script></script>
+<script>
+    async function sendMsg() {
+      const ta = document.getElementById('msgInput');
+      const text = ta.value.trim();
+      if (!text) return;
+
+      const formData = new FormData();
+      formData.append('contenu', text);
+
+      await fetch('/api/messages/public', {
+        method: 'POST',
+        body: formData,
+      });
+
+      ta.value = '';
+      const now = new Date();
+      const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+      const msgs = document.getElementById('view-msgs');
+      const row = document.createElement('div');
+      row.className = 'msg-row mine';
+      row.innerHTML = `<div class="msg-avatar" style="background:linear-gradient(135deg,#f59e0b,#d97706);">PM</div><div class="msg-group"><div class="bubble mine">${text.replace(/</g,'&lt;')}</div><div class="msg-meta">${time} ✓</div></div>`;
+      msgs.appendChild(row);
+      ta.style.height = 'auto';
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+  </script>
 </body>
 </html>

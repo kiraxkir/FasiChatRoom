@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FasiChat — Messagerie</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/etudiant.css">
+</head>
+<body>
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="brand-mark">💬</div>
+    <div class="brand-info"><h3>FasiChat</h3><span>Messagerie</span></div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('inbox', this)">Boîte de réception</button>
+    <button class="nav-tab" onclick="showTab('sent', this)">Messages envoyés</button>
+    <button class="nav-tab" onclick="showTab('conversation', this)">Conversation</button>
+    <button class="nav-tab" onclick="window.history.back()">Retour</button>
+  </div>
+  <div class="sidebar-search">
+    <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" class="search-input" placeholder="Rechercher..." id="searchInput"></div>
+  </div>
+  <div class="conv-list" id="convList"></div>
+  <div class="sidebar-profile">
+    <div class="profile-avatar">🎓</div>
+    <div class="profile-info"><h4>Utilisateur</h4><span>Connecté</span></div>
+    <div class="profile-actions"><a href="login.html" class="icon-btn" title="Déconnexion">🚪</a></div>
+  </div>
+</div>
+<div class="main-area">
+  <div class="chat-topbar"><div class="chat-topbar-avatar">💬</div><div class="chat-topbar-info"><h3 id="mainTitle">Boîte de réception</h3><p id="mainDesc">Messages privés et publics visibles pour votre rôle</p></div></div>
+  <div class="chat-messages" id="messageWindow"></div>
+  <div class="chat-input-area"><div class="input-row"><textarea class="msg-textarea" placeholder="Écrire un message..." rows="2" id="messageInput" onkeydown="handleKey(event)"></textarea><button class="send-btn" onclick="sendMessage()">➤</button></div></div>
+</div>
+<script>
+const state = { mode: 'inbox', targetId: null, currentUserId: null, role: null };
+
+function showTab(tab, btn) {
+  state.mode = tab;
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('mainTitle').textContent = tab === 'inbox' ? 'Boîte de réception' : tab === 'sent' ? 'Envoyés' : 'Conversation';
+  const desc = tab === 'conversation'
+    ? 'Sélectionnez un destinataire puis envoyez un message privé.'
+    : state.role === 'etudiant'
+      ? 'Les étudiants ne peuvent pas envoyer de messages publics.'
+      : 'Affichez tous les derniers messages.';
+  document.getElementById('mainDesc').textContent = desc;
+  document.getElementById('messageInput').placeholder = tab === 'conversation' ? 'Message privé à un destinataire...' : 'Écrire un message...';
+  updateSendControls();
+  loadMessages();
+}
+
+async function loadProfile() {
+  try {
+    const res = await fetch('/api/session/profile', { headers: { 'Accept': 'application/json' } });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      state.currentUserId = data.user.id;
+      state.role = data.user.role;
+      const profileName = document.querySelector('.profile-info h4');
+      if (profileName) profileName.textContent = data.user.nom || 'Utilisateur';
+      const profileRole = document.querySelector('.profile-info span');
+      if (profileRole) profileRole.textContent = data.user.role || 'Connecté';
+      updateSendControls();
+      return true;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return false;
+}
+
+async function loadMessages() {
+  const windowEl = document.getElementById('messageWindow');
+  windowEl.innerHTML = '<div class="date-sep">Chargement...</div>';
+  if (!state.currentUserId) {
+    await loadProfile();
+  }
+
+  let url = '/api/messages/inbox';
+  if (state.mode === 'sent') url = '/api/messages/sent';
+  if (state.mode === 'conversation') url = '/api/messages/conversation?target_id=' + (state.targetId || '0');
+
+  try {
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Erreur de chargement');
+    renderMessages(data.messages);
+    renderConversationList(data.messages);
+  } catch (err) {
+    windowEl.innerHTML = '<div class="date-sep">' + err.message + '</div>';
+  }
+}
+
+function renderConversationList(messages) {
+  const convList = document.getElementById('convList');
+  if (state.mode === 'conversation') {
+    const partners = {};
+    messages.forEach(msg => {
+      const partnerId = msg.expediteur_id === state.currentUserId ? msg.destinataire_id : msg.expediteur_id;
+      const partnerName = msg.expediteur_id === state.currentUserId ? msg.destinataire_nom : msg.expediteur_nom;
+      if (partnerId && partnerName) {
+        partners[partnerId] = partnerName;
+      }
+    });
+
+    if (!Object.keys(partners).length) {
+      convList.innerHTML = '<div class="section-label">Aucun destinataire privé trouvé</div>';
+      return;
+    }
+
+    convList.innerHTML = '<div class="section-label">Destinataires privés</div>' + Object.entries(partners).map(([id, name]) => `
+      <div class="conv-item" onclick="selectTarget(${id}, '${name.replace(/'/g, "\\'")}')">
+        <div class="avatar avatar-blue">${name.slice(0,2).toUpperCase()}</div>
+        <div class="conv-info"><div class="conv-name">${name}</div><div class="conv-preview">Ouvrir la conversation</div></div>
+      </div>
+    `).join('');
+  } else {
+    convList.innerHTML = '<div class="section-label">Utilisez l’onglet Conversation pour sélectionner un destinataire privé</div>';
+  }
+}
+
+function selectTarget(id, name) {
+  state.targetId = id;
+  document.getElementById('mainTitle').textContent = 'Conversation avec ' + name;
+  updateSendControls();
+  loadMessages();
+}
+
+function updateSendControls() {
+  const input = document.getElementById('messageInput');
+  const sendBtn = document.querySelector('.send-btn');
+  if (!input || !sendBtn) {
+    return;
+  }
+
+  if (state.role === 'etudiant' && state.mode !== 'conversation') {
+    input.placeholder = 'Vous ne pouvez envoyer que des messages privés. Utilisez l\'onglet Conversation.';
+    input.disabled = true;
+    sendBtn.disabled = true;
+    sendBtn.title = 'Envoyer un message privé depuis l’onglet Conversation';
+  } else {
+    input.placeholder = state.mode === 'conversation' ? 'Message privé à un destinataire...' : 'Écrire un message...';
+    input.disabled = false;
+    sendBtn.disabled = false;
+    sendBtn.title = '';
+  }
+}
+
+function renderMessages(messages) {
+  const windowEl = document.getElementById('messageWindow');
+  if (!messages.length) {
+    windowEl.innerHTML = '<div class="date-sep">Aucun message trouvé</div>';
+    return;
+  }
+  windowEl.innerHTML = messages.map(msg => {
+    const isMine = msg.expediteur_id === state.currentUserId;
+    const sender = isMine ? 'Vous' : (msg.expediteur_nom || 'Utilisateur');
+    const receiver = msg.destinataire_nom ? ' → ' + msg.destinataire_nom : '';
+    const bubbleClass = isMine ? 'bubble mine' : 'bubble theirs';
+    return `<div class="msg-row ${isMine ? 'mine' : ''}"><div class="msg-avatar">${sender.slice(0,2).toUpperCase()}</div><div class="msg-group"><div class="msg-sender">${sender}${receiver}</div><div class="${bubbleClass}">${escapeHtml(msg.contenu)}</div><div class="msg-meta">${msg.dateEnvoi}</div></div></div>`;
+  }).join('');
+}
+
+function escapeHtml(text) {
+  return text ? text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+}
+
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+
+async function sendMessage() {
+  if (state.role === 'etudiant' && state.mode !== 'conversation') {
+    alert('Les étudiants ne peuvent envoyer que des messages privés.');
+    return;
+  }
+
+  const text = document.getElementById('messageInput').value.trim();
+  if (!text) return;
+  const payload = new FormData();
+  let url = '/api/messages/public';
+
+  if (state.mode === 'conversation') {
+    if (!state.targetId) { alert('Sélectionnez un destinataire pour la conversation.'); return; }
+    payload.append('to', state.targetId);
+    url = '/api/messages/private';
+  }
+
+  payload.append('contenu', text);
+  await fetch(url, { method: 'POST', body: payload });
+  document.getElementById('messageInput').value = '';
+  loadMessages();
+}
+
+loadMessages();
+</script>
+</body>
+</html>

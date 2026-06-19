@@ -21,6 +21,7 @@
 
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="switchTab(this,'msgs')">💬 Messages</button>
+    <button class="nav-tab" onclick="location.href='dashboard_messages.html'">📨 Messagerie</button>
     <button class="nav-tab" onclick="switchTab(this,'cours')">📚 Cours</button>
     <button class="nav-tab" onclick="location.href='valve.html'">📣 Valve</button>
   </div>
@@ -115,7 +116,7 @@
       🎓
     </div>
     <div class="profile-info">
-      <h4>Samiel Banzolele</h4>
+      <h4>thimanga mbiya</h4>
       <span>Étudiant · L2 FASI</span>
     </div>
     <div class="profile-actions">
@@ -266,22 +267,18 @@
 
   <!-- Input area -->
   <div class="chat-input-area">
-    <div class="input-toolbar">
-      <button class="toolbar-btn">📎 Fichier</button>
-      <button class="toolbar-btn">🖼 Image</button>
-      <button class="toolbar-btn">🎥 Vidéo</button>
-      <button class="toolbar-btn">📊 PDF</button>
-    </div>
     <div class="input-row">
       <button class="voice-btn" title="Message vocal">🎤</button>
       <div class="msg-textarea-wrap">
-        <textarea class="msg-textarea" placeholder="Écrire un message...&#10;Appuyez sur Entrée pour envoyer" rows="1" id="msgInput" onkeydown="handleKey(event)"></textarea>
-        <button class="emoji-btn">😊</button>
+        <textarea class="msg-textarea" placeholder="Vous ne pouvez pas envoyer de message public. Utilisez la Messagerie privée." rows="2" id="msgInput" disabled></textarea>
       </div>
-      <button class="send-btn" onclick="sendMsg()">➤</button>
+      <button class="send-btn" disabled>➤</button>
     </div>
+    <div class="student-note">🔒 Envoi de messages publics désactivé pour les étudiants. Utilisez l'onglet Messagerie pour la communication privée.</div>
   </div>
 </div>
+<script src="assets/js/dashboard_enseignant.js"></script>
+</body>
 
 <!-- ===== RIGHT PANEL ===== -->
 <div class="right-panel">

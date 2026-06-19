@@ -1,0 +1,9 @@
+Ajout d’exemples de comptes dans seed.sql :
+étudiant : SI2024001  // etudiant 
+enseignant : ENS2024001   // prof
+assistant : ASS2024001
+
+Mot de passe des exemples
+étudiant : EtuPass123!
+enseignant : EnsPass123!
+assistant : AssPass123!
